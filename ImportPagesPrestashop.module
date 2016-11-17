@@ -5,15 +5,7 @@
  * For ProcessWire 2.1 or newer
  *
  * ProcessWire 2.x 
- * Copyright (C) 2016 by Djuhari 
- * Licensed under GNU/GPL v2, see LICENSE.TXT
- * 
- *
- * Version 1.0.0, September 28
- * 	Added support for FieldtypeFile (and FieldtypeImage). File field should contain full path and filename
- *	or the URL to the file you want to import. For fields that support multiple files, place each filename
- * 	or URL on it's own line, OR separate them by | (pipe) OR tab ... whatever you prefer.
- *
+ * Copyright (C) 2016 by Djuhari and Harmen ;)
  */
 
 class ImportPagesPrestashop extends Process implements Module
