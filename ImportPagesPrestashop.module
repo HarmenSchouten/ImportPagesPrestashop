@@ -1,0 +1,947 @@
+<?php
+
+/**
+ * ProcessWire Process module to import pages from a Prestashop file.
+ * For ProcessWire 2.1 or newer
+ *
+ * ProcessWire 2.x 
+ * Copyright (C) 2016 by Djuhari 
+ * Licensed under GNU/GPL v2, see LICENSE.TXT
+ * 
+ *
+ * Version 1.0.0, September 28
+ * 	Added support for FieldtypeFile (and FieldtypeImage). File field should contain full path and filename
+ *	or the URL to the file you want to import. For fields that support multiple files, place each filename
+ * 	or URL on it's own line, OR separate them by | (pipe) OR tab ... whatever you prefer.
+ *
+ */
+
+class ImportPagesPrestashop extends Process implements Module
+{
+	//First the module info.
+	public static function getModuleInfo()
+	{
+		return array(
+			'title' => 'Import Products from Prestashop',
+			'version' => 109,
+			'summary' => 'Import your categories, products, features and images directly from your Prestashop database to your Processwire website.',
+			'requires' => "FieldtypeTable",
+			'singular' => true,
+			'autoload' => false,
+		);
+	}
+
+	const adminPageName = 'import-pages-prestashop';
+
+	protected $template = null;
+
+	protected $parent = null;
+
+	protected $fieldtypes = array(
+		'FieldtypePageTitle',
+		'FieldtypeText',
+		'FieldtypeTextarea',
+		'FieldtypeInteger',
+		'FieldtypeFloat',
+		'FieldtypeEmail',
+		'FieldtypeURL',
+		'FieldtypeCheckbox',
+		'FieldtypeFile',
+		'FieldtypePage',
+	);
+
+	public function init()
+	{
+		parent::init();
+		ini_set('auto_detect_line_endings', true);
+	}
+
+	######################################################
+	################ Execute Form 1 ######################
+	######################################################
+	public function ___execute()
+	{
+		$form = $this->buildForm1();
+		if ($this->input->post->submit) {
+			if ($this->processForm1($form)) $this->session->redirect('./import/');
+		}
+		return $form->render();
+	}
+
+	#####################################################################################
+	########### Execute the big form for all types that can be imported #################
+	#####################################################################################
+
+	public function ___executeImport()
+	{
+		$this->dbPrefix = $this->session->dbPrefix;
+		$this->template_cat = $this->templates->get($this->session->catTemplate);
+		$this->template_pro = $this->templates->get($this->session->proTemplate);
+		$this->parent = $this->pages->get($this->session->csvParent);
+		$this->done = $this->session->done;
+		if (!$this->template_cat || !$this->parent->id || !$this->template_pro) {
+			$this->error("Missing required fields");
+			$this->session->redirect("../");
+		}
+		//When button is clicked to import the categories...
+		$form = $this->buildForm2();
+		if ($this->input->post->importcat) {
+			$this->session->done = 1;
+			return $this->processForm21($form);
+		}
+
+		//When button is cliced to import the products...
+		if ($this->input->post->importprod) {
+			if ($this->session->done >= 1) {
+				$this->session->done = 2;
+				return $this->processForm31($form);
+
+			}
+			else $this->message("First import your categories");
+		}
+
+		//When button is clicked to import the features...
+		if($this->input->post->importfeat) {
+			if ($this->session->done >= 2) {
+				return $this->processForm41($form);
+			}
+			else $this->message("First import the products.");
+		}
+
+		//When button is clicked to import the images...
+		if($this->input->post->importimg) {
+			if ($this->session->done >= 2) {
+				return $this->processForm51($form);
+			}
+			else $this->message("First import the products.");
+		}
+
+		return $form->render();
+	}
+
+#############################################################
+####################### Build Form 1 ########################
+#############################################################
+
+	protected function buildForm1() {
+		$form = $this->modules->get("InputfieldForm");
+		$form->method = 'post';
+		$form->description = "Step 1: Check database. Follow the steps.";
+
+        //DB Name
+		$f = $this->modules->get("InputfieldText");
+        $f->label = 'DB Name';
+		$f->required = true;
+        $f->name = 'db_name';
+		$f->description = "Input DB name";
+        $f->columnWidth = 19;
+        $form->add($f);
+
+        // DB User
+        $f =  $this->modules->get("InputfieldText");
+        $f->label = 'DB User';
+        $f->name = 'db_user';
+		$f->description = "Input DB user";
+		$f->required = true;
+        $f->columnWidth = 18;
+        $form->add($f);
+
+        // DB Pass
+        $f =  $this->modules->get("InputfieldText");
+        $f->label = 'DB Pass';
+        $f->name = 'db_pass';
+		$f->description = "Input DB password";
+		$f->required = true;
+        $f->columnWidth = 18;
+        $form->add($f);
+
+        // DB Host
+        $f =  $this->modules->get("InputfieldText");
+        $f->name = 'db_host';
+		$f->label = 'DB Host';
+		$f->description = "Input DB host ";
+		$f->required = true;
+		$f->columnWidth = 19;
+        $form->add($f);
+
+        // DB Port
+        $f =  $this->modules->get("InputfieldText");
+        $f->label = 'DB Port';
+		$f->name = 'db_port';
+		$f->description = "Input DB port ";
+        $f->columnWidth = 11;
+        $form->add($f);
+
+        // DB Prefix
+        $f = $this->modules->get("InputfieldText");
+        $f->label = 'DB prefix';
+        $f->required = true;
+        $f->name = 'db_prefix';
+		$f->description = "Must end with '_'";
+        $f->columnWidth = 14;
+        $form->add($f);
+
+		// Template For Categories
+        $f = $this->modules->get("InputfieldSelect");
+		$f->name = 'template_cat';
+		$f->label = 'Template to use for category pages';
+		$f->required = true;
+		$f->addOption('');
+		foreach($this->templates as $t) $f->addOption($t->id, $t->name);
+		if($this->session->catTemplate) $f->attr('value', $this->session->catTemplate);
+		$form->add($f);
+		
+		// Template For Products
+		$f = $this->modules->get("InputfieldSelect");
+		$f->name = 'template_pro';
+		$f->label = 'Template to use for product pages';
+		$f->required = true;
+		$f->addOption('');
+		foreach($this->templates as $t) $f->addOption($t->id, $t->name);
+		if($this->session->proTemplate) $f->attr('value', $this->session->proTemplate);
+		$form->add($f);
+
+		// Parent For Imported Pages
+		$f = $this->modules->get("InputfieldPageListSelect");
+		$f->name = 'parent_id';
+		$f->label = 'Parent Page';
+		$f->required = true;
+		$f->description = "The pages you import will be given this parent.";
+		if($this->session->csvParent) $f->attr('value', $this->session->csvParent);
+		$form->add($f);
+
+		$this->addSubmit($form, 'Continue to import');
+
+	return $form;
+	}
+
+	#####################################################################################
+	################################# Build Form 2 ######################################
+	#####################################################################################
+
+	protected function buildForm2() {
+		$form = $this->modules->get("InputfieldForm");
+		$form->method = 'post';
+		$form->action = './';
+		$form->description = "Import Categories, Products, Features or Images. Follow the steps.";
+
+	##################################################################################
+	################################# Categories #####################################
+	##################################################################################
+
+		$ef = $this->modules->get("InputfieldText");
+		$ef->name = "Categories";
+		$ef->description = "Import your categories.";
+		$ef->label = "Step 2: Import Categories";
+		$catImported = 0;
+		$categories = $this->get_category();
+		$categories->execute(array(':iso'=>'en'));
+		$fetchAll = $categories->fetchAll(PDO::FETCH_ASSOC);
+		foreach ($fetchAll as $fetch => $link) {
+			$catImported++;
+		}
+		$ef->attr  ('value', "$catImported categories will be imported");
+		$form->add($ef);
+
+		$this->ImportCat($form, 'Import categories');
+
+	##################################################################################
+	################################# Products #######################################
+	##################################################################################
+
+		$ef = $this->modules->get("InputfieldText");
+		$ef->name = "Products";
+		$ef-> description = "Import your products. Have you already imported the categories? Otherwise this doesn't work.";
+		$ef->label = "Step 3: Import Products";
+		$prodImported = 0;
+		$products = $this->get_products();
+		$products->execute(array(':iso'=>'en'));
+		$fetchAll = $products->fetchAll(PDO::FETCH_ASSOC);
+		foreach ($fetchAll as $fetch => $product) {
+			$prodImported++;
+		}
+		$ef->attr ('value', "$prodImported products will be imported");
+		$form->add($ef);
+		$this->ImportProd($form, 'Import products');
+
+	##################################################################################
+	################################# Features #######################################
+	##################################################################################
+
+		$ef = $this->modules->get("InputfieldText");
+		$ef->name = "Features";
+		$ef-> description = "Import your features. Have you already imported the products? Otherwise this doesn't work.";
+		$ef->label = "Step 4: Import Features";
+		$featImported = 0;
+		$features = $this->get_features();
+		$features->execute(array(':iso'=>'en'));
+		$fetchAll = $features->fetchAll(PDO::FETCH_ASSOC);
+		foreach ($fetchAll as $fetch => $feature) {
+			$featImported++;
+		}
+		$ef->attr ('value', "$featImported features will be imported");
+		$form->add($ef);
+
+		$this->ImportFeat($form, 'Import Features');
+
+	#################################################################
+	########################### Images ##############################
+	#################################################################
+
+		$ef = $this->modules->get("InputfieldText");
+		$ef->name = "Images";
+		$ef-> description = "Import your images. Have you already imported the products? Otherwise this doesn't work.";
+		$ef->label = "Step 5: Import Images";//$value;
+		$imgImported = 0;
+		$images = $this->get_images();
+		$images->execute(array(':iso'=>'en'));
+		$fetchAll = $images->fetchAll(PDO::FETCH_ASSOC);
+		foreach ($fetchAll as $fetch => $product) {
+			$imgImported++;
+		}
+		$ef->attr ('value', "$imgImported images will be imported");
+		$form->add($ef);
+		$this->ImportImg($form, 'Import Images');
+		return $form;
+	}
+
+	###############################################################################
+	################### Functions for processing the forms ########################
+	###############################################################################
+
+	protected function processForm1(InputfieldForm $form)
+	{
+    	$form->processInput($this->input->post);
+		if(count($form->getErrors())) return false;
+		$this->session->catTemplate = (int) $form->get('template_cat')->value;
+		$this->session->proTemplate = (int) $form->get('template_pro')->value;
+		$this->session->csvParent = (int) $form->get('parent_id')->value;
+		$this->session->dbUser = $form->get('db_user')->value;
+        $this->session->dbPass = $form->get('db_pass')->value;
+        $this->session->dbHost = $form->get('db_host')->value;
+        $this->session->dbPort = $form->get('db_port')->value;
+        $this->session->dbPrefix = $form->get('db_prefix')->value;
+		$name = $this->session->dbName = $form->get('db_name')->value;
+		$this->session->done = 0;
+
+	################################################################################
+	############### Add fields to template if needed ###############################
+	################################################################################
+
+		$templates = wire("templates");
+		$template_cat = $templates->get($this->session->catTemplate);
+		$template_pro = $templates->get($this->session->proTemplate);
+		if (!$template_cat->hasField("id_category")){
+			$template_cat->fields->add("id_category");
+			$template_cat->fields->save();
+		};
+		if (!$template_pro->hasField("productid")){
+			$template_pro->fields->add("productid");
+			$template_pro->fields->save();
+		}
+		if (!$template_pro->hasField("Specification")){
+			$template_pro->fields->add("Specification");
+			$template_pro->fields->save();
+		};
+		return $this->get_dbPrestashop();
+	}
+
+	##########################################################
+	############ Process Categories ##########################
+	##########################################################
+
+	protected function processForm21(InputfieldForm $form){
+		$form->processInput($this->input->post);
+		$catImported = 0;
+		$categories = $this->get_category();
+		$categories->execute(array(':iso'=>'en' ));
+		$fetchAll = $categories->fetchAll(PDO::FETCH_ASSOC);
+		foreach ($fetchAll as $fetch => $link) {
+			$catImported++;
+		}
+		$this->ImportCategories();
+		return $this->processFormMarkupCat($catImported);
+	}
+	##########################################################
+	################## Process Products ######################
+	##########################################################
+
+	protected function processForm31(InputfieldForm $form){
+		$form->processInput($this->input->post);
+		$prodImported = 0;
+		$products = $this->get_products();
+		$products->execute(array(':iso'=>'en'));
+		$fetchAll = $products->fetchAll(PDO::FETCH_ASSOC);
+		foreach ($fetchAll as $fetch => $product) {
+			$prodImported++;
+		}
+		$this->ImportProducts();
+		return $this->processFormMarkupProd($prodImported);
+	}
+	#########################################################
+	######## Process Features ###############################
+	#########################################################
+
+	protected function processForm41(InputfieldForm $form){
+		$form->processInput($this->input->post);
+		$featImported = 0;
+		$features = $this->get_features();
+		$features->execute(array(':iso'=>'en'));
+		$fetchAll = $features->fetchAll(PDO::FETCH_ASSOC);
+		foreach ($fetchAll as $fetch => $product) {
+			$featImported++;
+		}
+		$this->ImportFeatures();
+		return $this->processFormMarkupFeat($featImported);
+	}
+	##########################################################
+	############# Process Images #############################
+	##########################################################
+
+	protected function processForm51(inputfieldForm  $form){
+		$form->processInput($this->input->post);
+		$imgImported = 0;
+		$images = $this->get_images();
+		$images->execute(array(':iso'=>'en'));
+		$fetchAll = $images->fetchAll(PDO::FETCH_ASSOC);
+		foreach ($fetchAll as $fetch => $product) {
+			$imgImported++;
+		}
+		$this->ImportImages();
+		return $this->processFormMarkupImg($imgImported);
+	}
+
+	####################################################################################################################
+	############### Process Form Markup to show for each imported type how many items are imported #####################
+	####################################################################################################################
+
+	protected function processFormMarkupCat($catImported) {
+		return 	"<h2>Imported $catImported categories</h2>" .
+			"<p><a href='{$this->config->urls->admin}page/list/?open={$this->parent->id}'>See the imported pages</a></p>" .
+			"<p><a href='../import/'>Import more</a></p>";
+	}
+
+	protected function processFormMarkupProd($prodImported) {
+		return 	"<h2>Imported $prodImported products</h2>" .
+			"<p><a href='{$this->config->urls->admin}page/list/?open={$this->parent->id}'>See the imported pages</a></p>" .
+			"<p><a href='../import/'>Import more </a></p>";
+	}
+
+	protected function processFormMarkupFeat($featImported) {
+		return 	"<h2>Imported $featImported features</h2>" .
+			"<p><a href='{$this->config->urls->admin}page/list/?open={$this->parent->id}'>See the imported pages</a></p>" .
+			"<p><a href='../import/'>Import more</a></p>";
+	}
+
+	protected function processFormMarkupImg($imgImported) {
+		return 	"<h2>Imported $imgImported images</h2>" .
+			"<p><a href='{$this->config->urls->admin}page/list/?open={$this->parent->id}'>See the imported pages</a></p>" .
+			"<p><a href='../import/'>Import more </a></p>";
+	}
+
+	######################################################################################################
+	############# Functions to import the categories, products, features and images ######################
+	######################################################################################################
+
+	##################################
+	############ Categories ##########
+	##################################
+	protected function importCategories() {
+		$started = time();
+		$numTrashed = 0;
+		$languages = wire("languages");
+		$parent = $this->session->csvParent;
+		$catTemplate = $this->session->catTemplate;
+		
+		foreach($languages as $language) {
+			$iso_code= $language->name ;
+			$id_lang=  $language->id;
+			$categories = $this->get_category();
+			if ($iso_code =='default'){
+				$categories->execute(array(':iso'=>'en' ));
+			 	$fetchAll = $categories->fetchAll(PDO::FETCH_ASSOC);
+				foreach ($fetchAll as $fetch => $item) {
+					$str_catlink = $item['link_rewrite'];
+					$category_name = preg_replace('/[^a-z0-9]+\Z/i', '', $str_catlink);
+					$p = wire("pages")->get("parent=$parent,name=$category_name");
+					if (!$p->id) {
+						$p = new Page();
+						$p->template = $catTemplate;
+						$p->parent = $parent;
+						$p->name = $category_name;
+						$p->title = $item['category_name'];
+						$p->id_category = $item['id_category'];
+						$p->save();
+					}
+					$p->of(false);
+					$p->title = $item['category_name'];
+					$body = "$item[description]";
+					$p->body = $body;
+					$p->save();
+				}
+			}
+
+			$categories->execute(array(':iso'=>$iso_code));
+			$fetchAll = $categories->fetchAll(PDO::FETCH_ASSOC);
+			foreach ($fetchAll as $fetch => $item) {
+				$idcat= $item['id_category'];
+				$page = wire("pages")->get("id_category=$idcat");
+				$page->of(false);
+				if ($item['id_category'] == $page->id_category){
+					$page->set("name".$id_lang, $item['link_rewrite']);
+					$page->set("status".$id_lang, '1');
+					$page->title->setLanguageValue($id_lang, $item['category_name']);
+					$page->body->setLanguageValue($id_lang, $item['description']);
+					$page->save();
+				}
+			}
+		}
+		$expired = $p->parent->children("modified<$started");
+		foreach($expired as $p) {
+ 			$p->trash();
+  			$numTrashed++;
+		}
+	}
+
+	##################################
+	############ Products ############
+	##################################
+	protected function importProducts(){
+		$languages = wire("languages");
+		$parent = $this->session->csvParent;
+		$proTemplate = $this->session->proTemplate;
+		foreach($languages as $language) {
+			$products = $this->get_products();
+			$iso_code = $language->name;
+			$id_lang = $language->id;
+			if ($iso_code == 'default') {
+				$products->execute(array(':iso' => 'en'));
+				$fetchAll = $products->fetchAll(PDO::FETCH_ASSOC);
+				foreach ($fetchAll as $fetch => $product) {
+					$str_prlink = $product['link_rewrite'];
+					$product_name = preg_replace('/[^a-z0-9]+\Z/i', '', $str_prlink);
+					$product_url = $product['id_product'] . '-' . $product_name . '-' . $product['ean'] . '.html';
+					$parent_category = wire("pages")->get($parent);
+					$id_category = $product['id_category'];
+					$productid = $product['id_product'];
+					if (!$parent_category->id) {
+						$this->message("Parent page does not exist");
+					}
+					$parent_product = $parent_category->children->get("id_category=$id_category");
+					if (!$parent_product->id) {
+						$this->message("Parent page does not exist");
+					}
+					$page_product = $parent_product->child("productid=$productid");
+					if ((!$page_product->id)) {
+						$page_product = new Page();
+						$page_product->parent = $parent_product;
+						$page_product->template = $proTemplate;
+						$page_product->productid = $product['id_product'];
+						$page_product->id_category = $product['id_category'];
+						$page_product->name = $product_url;
+						$page_product->title = $product['name'];
+					}
+					$page_product->of(false);
+					$page_product->title = $product['name'];
+					$page_product->body = ($product['description']);
+					$body = "$product[description]";
+					$page_product->body = $body;
+					$page_product->save();
+				}
+			}
+
+
+			$products->execute(array(':iso' => $iso_code));
+			$fetchAll = $products->fetchAll(PDO::FETCH_ASSOC);
+			foreach ($fetchAll as $fetch => $item) {
+				$idpro = $item['id_product'];
+				$page = wire("pages")->get("productid=$idpro");
+				$prlink_nl = $item['link_rewrite'];
+				$prname = preg_replace('/[^a-z0-9]+\Z/i', '', $prlink_nl);//make sure string ends with alphanumeric
+				$url = $item['id_product'] . '-' . $prname . '-' . $item['ean'] . '.html';
+				$page->set("name" . $id_lang, $url);
+				$page->set("status".$id_lang, '1');
+				$page->title->setLanguageValue($id_lang, $item['name']);
+				$page->body->setLanguageValue($id_lang, $item['description']);
+				$page->save();
+			}
+		}
+	}
+
+	##################################
+	############ Features ############
+	##################################
+	protected function ImportFeatures(){
+		$languages = wire("languages");
+		$proTemplate = $this->session->proTemplate;
+		$specs = $this->get_specs();
+		$products = $this->get_products();
+		$products->execute(array(':iso' => 'en'));
+		$fetchAll = $products->fetchAll(PDO::FETCH_ASSOC);
+		foreach ($fetchAll as $fetch => $product) {
+			$id_product = $product['id_product'];
+			$product_page = $this->pages->get("productid=$id_product");
+			$productid = $product_page->productid;
+			if (($product_page->id)) {
+				$kenmerk = 	$product_page->Specification;
+				$i=0;
+				foreach($kenmerk as $row) {
+					if(($row->kenmerk != "") || ($row->waarde !="") || ($row->kenmerk != NULL) || ($row->waarde !=NULL)){
+						$product_page->of(false);
+						$kenmerk->remove($i);
+						$product_page->save('Specification');
+					}
+				$i++;
+				}
+			}
+			$lang_en=$languages->get('default');
+			$lang_en->name;
+			$specs->execute(array(':iso' => 'en', ':idpr' => $productid));
+			$fetch = $specs->fetchAll(PDO::FETCH_ASSOC);
+			foreach ($fetch as $fetch => $feature) {
+				$product_page->of(false);
+				$row = $product_page->Specification->makeBlankItem();
+				$row->kenmerk->setLanguageValue($lang_en, $feature['name']);
+				$row->waarde->setLanguageValue($lang_en, $feature['value']);
+				$row->id_feature=($feature['id_feature']);
+				$row->id_feature_value=($feature['id_feature_value']);
+				$product_page->Specification->add($row);
+				$product_page->save('Specification');
+			}
+			foreach($languages as $language) {
+				$iso_code = $language->name;
+				$id_lang = $language->id;
+				$specs->execute(array(':iso' => $iso_code, ':idpr' => $productid));
+				$fetchAll = $specs->fetchAll(PDO::FETCH_ASSOC);
+				foreach ($fetchAll as $fetch => $item) {
+					if ($iso_code = $item['iso_code']){
+						$idf = $item['id_feature'];
+						$idfv = $item['id_feature_value'];
+						$product_page->of(false);
+						$row = $product_page->Specification->get("id_feature=$idf");
+						$row->kenmerk->setLanguageValue($id_lang, $item['name']);
+						$row->waarde->setLanguageValue($id_lang, $item['value']);
+						$product_page->Specification->add($row);
+						$product_page->save('Specification');
+					}
+				}
+			}
+		}
+	}
+
+	##################################
+	############ Images ##############
+	##################################
+	protected function importImages()
+	{
+		$images = $this->get_images();
+		$images->execute(array(':iso' => 'en'));
+		$pictures = $images->fetchAll(PDO::FETCH_ASSOC);
+		$pagesWithImages = wire("pages")->find("images_product.count>0");
+		foreach ($pagesWithImages as $product_page) {
+			$product_page->images_product->removeAll();
+			$product_page->save();
+		}
+
+		foreach ($pictures as $picture) {
+			$id_product = $picture['id_product'];
+			$product_page = $this->pages->get("productid=$id_product");
+			// ensure output formatting is off
+			$product_page->of(false);
+			$str_prlink = $picture['product_name']; //make sure end of string ends with alphanumeric
+			$image_name = preg_replace('/[^a-z0-9]+\Z/i', '', $str_prlink);
+			$image_url = $picture['file_id'] . "/" . $image_name . '.jpg';
+			$image_path = "http://www.r-go-tools.com/" . $image_url;
+			try {
+				if (!$product_page->images_product->get("name={$image_name}.jpg")) {
+					$product_page->images_product->add($image_path);
+				}
+			} catch (Exception $e) {
+			}
+			$product_page->save();
+		}
+	}
+
+	#####################################################################
+	############ Buttons for each type that needs be imported ###########
+	#####################################################################
+
+	protected function addSubmit(InputfieldForm $form, $value = 'Submit') {
+		$f = $this->modules->get("InputfieldSubmit"); 
+		$f->name = 'submit';
+		$f->value = $value; 
+		$form->add($f); 
+	}
+
+	protected function ImportCat(InputfieldForm $form, $value = 'Submit'){
+		$f = $this->modules->get("InputfieldSubmit");
+		$f->name = 'importcat';
+		$f->value = $value;
+		$form->add($f);
+	}
+
+	protected function ImportProd(InputfieldForm $form, $value = 'Submit'){
+		$f = $this->modules->get("InputfieldSubmit");
+		$f->name = 'importprod';
+		$f->value = $value;
+		$form->add($f);
+	}
+
+	protected function ImportFeat(InputfieldForm $form, $value = 'Submit'){
+		$f = $this->modules->get("InputfieldSubmit");
+		$f->name = 'importfeat';
+		$f->value = $value;
+		$form->add($f);
+	}
+
+	protected function ImportImg(InputfieldForm $form, $value = 'Submit'){
+		$f = $this->modules->get("InputfieldSubmit");
+		$f->name = 'importimg';
+		$f->value = $value;
+		$form->add($f);
+	}
+
+	#######################################################################
+	################## Make connection with DB ############################
+	#######################################################################
+
+	protected function get_dbPrestashop() {
+		try	{
+			$host = $this->session->dbHost;			//Get the DB Host from the form
+			$username = $this->session->dbUser;		//Get the DB User from the form
+			$password = $this->session->dbPass;		//Get the DB Pass from the form
+			$name = $this->session->dbName;			//Get the DB Name from the form
+			$charset = wire('config')->dbCharset; 	//Charset set in config, don't change here!
+			$port =  $this->session->dbPort;		//Get the DB port from the form
+				
+			$dsn = "mysql:dbname=$name;host=$host";
+			if($port) $dsn .= ";port=$port";
+				
+			$driver_options = array(
+				PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES '$charset'",
+				PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+			);
+			$psdatabase = new WireDatabasePDO($dsn, $username, $password, $driver_options);	//Make connection with the DB
+			$psdatabase->setDebugMode(wire('config')->debug);
+			$this->message('Settings are correct, connected with external database');
+			} catch(Exception $e) {
+				 $this->message('Setting an external database FAILED');
+				return false;
+			}
+ 		return $psdatabase;
+}
+
+	#########################################################################
+	###### Get categories, products, features and images from DB ############
+	#########################################################################
+
+	protected function get_category(){
+
+		$prestashop = $this->get_dbPrestashop();
+		$dbPrefix = $this->session->dbPrefix;
+		$categories = $prestashop->prepare("
+			SELECT l.id_lang, l.iso_code, cl.description, cl.name AS category_name, cl.id_shop, c.active, c.id_category, c.id_parent, c.position, cl.link_rewrite
+			FROM ".$dbPrefix."category c
+			INNER JOIN ".$dbPrefix."category_lang cl
+			ON c.id_category=cl.id_category
+			LEFT JOIN ".$dbPrefix."lang l
+			ON cl.id_lang=l.id_lang 
+			WHERE c.active='1'
+			AND cl.id_shop='1'
+			AND l.iso_code= :iso
+			AND c.id_parent = '2'
+			ORDER BY c.position
+			");
+		return $categories;
+	}
+
+	protected function get_products(){
+		$prestashop = $this->get_dbPrestashop();
+		$dbPrefix = $this->session->dbPrefix;
+		$products = $prestashop->prepare("
+		SELECT pl.description AS description, pl.name AS name, pl.link_rewrite AS link_rewrite, pl.id_product AS id_product, p.ean13 AS ean, p.id_category_default AS id_category 
+		FROM ".$dbPrefix."product p
+		JOIN ".$dbPrefix."product_lang pl
+		ON p.id_product=pl.id_product
+		JOIN ".$dbPrefix."lang l
+		ON pl.id_lang=l.id_lang
+		WHERE p.active='1'
+		AND pl.id_shop='1'
+		AND l.iso_code= :iso	
+		");
+		return $products;
+	}
+
+	protected function get_features(){
+		$prestashop = $this->get_dbPrestashop();
+		$dbPrefix = $this->session->dbPrefix;
+		$features = $prestashop->prepare("
+		SELECT fl.name as name, fvl.value AS value, l.iso_code AS iso_code
+		FROM ".$dbPrefix."feature_lang fl
+		LEFT JOIN ps_lang l
+		ON fl.id_lang = l.id_lang
+		LEFT JOIN ".$dbPrefix."feature_value_lang fvl
+		ON fvl.id_lang=l.id_lang
+		LEFT JOIN ".$dbPrefix."feature f
+		ON fl.id_feature=f.id_feature
+		LEFT JOIN ".$dbPrefix."feature_shop fs
+		ON fl.id_feature=fs.id_feature
+		WHERE l.iso_code = :iso
+		AND fs.id_shop = '1'
+		ORDER BY f.position
+		");
+		return $features;
+	}
+
+	protected function get_specs(){
+		$prestashop = $this->get_dbPrestashop();
+		$dbPrefix = $this->session->dbPrefix;
+	    $specs = $prestashop->prepare("
+					SELECT DISTINCT 
+						fl.name,
+						fvl.value,
+						pf.id_product,
+						l.iso_code,
+						fvl.id_lang,
+						pf.id_feature,
+						pf.id_feature_value
+					FROM
+						".$dbPrefix."feature_lang fl
+						LEFT OUTER JOIN ".$dbPrefix."feature_product pf
+						 ON fl.id_feature = pf.id_feature
+						LEFT OUTER JOIN ".$dbPrefix."feature_value_lang fvl
+						 ON pf.id_feature_value = fvl.id_feature_value
+						LEFT OUTER JOIN ".$dbPrefix."feature f
+						 ON pf.id_feature = f.id_feature
+						LEFT OUTER JOIN ".$dbPrefix."feature_shop sf
+						 ON pf.id_feature = sf.id_feature
+						LEFT OUTER JOIN ".$dbPrefix."lang l
+						 ON fvl.id_lang = l.id_lang AND fl.id_lang = l.id_lang
+					WHERE
+						sf.id_shop = '1'
+						AND pf.id_product = :idpr
+						AND l.iso_code = :iso
+						
+					ORDER BY
+						f.position ASC
+					");
+		return $specs;
+	}
+
+	protected function get_images(){
+		$prestashop = $this->get_dbPrestashop();
+		$dbPrefix = $this->session->dbPrefix;
+		$pictures = $prestashop->prepare("
+        SELECT i.id_image AS file_id, i.id_product AS id_product, i.position, i.cover, il.legend, pl.link_rewrite AS product_name, p.ean13, pl.id_lang
+        FROM ".$dbPrefix."image i
+        LEFT JOIN ".$dbPrefix."image_lang il
+        ON (il.id_image=i.id_image)
+        LEFT JOIN ".$dbPrefix."product p
+        ON p.id_product=i.id_product
+        LEFT JOIN ".$dbPrefix."product_lang pl
+        ON (pl.id_product=p.id_product)
+        LEFT OUTER JOIN ".$dbPrefix."lang l
+        ON il.id_lang = l.id_lang AND pl.id_lang = l.id_lang
+        WHERE pl.id_shop='1'
+        AND l.iso_code = :iso
+        AND p.active='1' 
+        ");
+		return $pictures;
+	}
+
+##################################################
+######## Install the module and fields ###########
+##################################################
+
+	public function ___install() {
+
+		if(ProcessWire::versionMajor == 2 && ProcessWire::versionMinor < 1) {
+			throw new WireException("This module requires ProcessWire 2.1 or newer"); 
+		}
+		$this->getInstalledFields();
+		$page = $this->getInstalledPage();
+		$this->message("Installed to {$page->path}"); 
+		if($page->parent->name == 'setup') $this->message("Click to your 'Setup' page to start using the PS_Importer"); 
+	}
+
+	protected function getInstalledFields(){
+		$fields = $this->fields;
+		$fieldpro = $fields->get("productid"); 
+		$fieldcat = $fields->get("id_category"); 
+		$fieldspec = $fields->get("Specification");
+		if (!$fieldcat){
+			$field = new Field();
+			$field->name = 'id_category';
+			$field->type = 'Integer';
+			$field->label = 'id_category';
+			$field->save();
+		}
+		if (!$fieldpro){
+			$field = new Field();
+			$field->name = 'productid';
+			$field->type = 'Integer';
+			$field->label = 'productid';
+			$field->save();
+		}
+		if (!$fieldspec){
+			$field = new Field();
+			$field->name = 'Specification';
+			$field->type = $this->modules->get("FieldtypeTable");
+			$field->label = 'Specification';
+			$field->maxCols = 4;
+			$field->col1name = "kenmerk";
+			$field->col1label ="feature";
+			$field->col1type = "textLanguage";
+			$field->col1sort =1;
+			$field->col2name="waarde";
+			$field->col2label="value";
+			$field->col2type="textLanguage";
+			$field->col2sort=2;
+			$field->col3name="id_feature";
+			$field->col3label="id_feature";
+			$field->col3type="IntegerUnsigned";
+			$field->col3sort=3;
+			$field->col4name="id_feature_value";
+			$field->col4label="id_feature_value";
+			$field->col4type="IntegerUnsigned";
+			$field->col4sort=4;
+			$field->save();
+		}
+	}
+
+	protected function getInstalledPage() {
+
+		$admin = $this->pages->get($this->config->adminRootPageID); 
+		$parent = $admin->child("name=setup"); 
+		if(!$parent->id) $parent = $admin;
+		$page = $parent->child("name=" . self::adminPageName);
+
+		if(!$page->id) { 	
+			$page = new Page();
+			$page->parent = $parent; 
+			$page->template = $this->templates->get('admin');
+			$page->name = self::adminPageName; 
+			$page->title = "Import Products From Prestashop";
+			$page->process = $this; 
+			$page->sort = $parent->numChildren;
+			$page->save();
+		}
+		else{
+			$this->message("Page exists already");
+			return $page;
+		}
+	}
+
+####################################################################
+################### Uninstall the module ###########################
+####################################################################
+
+	public function ___uninstall() {
+		$page = $this->getInstalledPage();
+		if($page->id) {
+			$this->message("Removed {$page->path}");
+			$this->pages->delete($page);
+		}
+	}
+}
+?>
