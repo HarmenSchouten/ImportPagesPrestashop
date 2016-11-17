@@ -891,11 +891,11 @@ class ImportPagesPrestashop extends Process implements Module
 			$field->col2sort=2;
 			$field->col3name="id_feature";
 			$field->col3label="id_feature";
-			$field->col3type="IntegerUnsigned";
+			$field->col3type="int2";
 			$field->col3sort=3;
 			$field->col4name="id_feature_value";
 			$field->col4label="id_feature_value";
-			$field->col4type="IntegerUnsigned";
+			$field->col4type="int2";
 			$field->col4sort=4;
 			$field->save();
 		}
