@@ -264,13 +264,32 @@ class ImportPagesPrestashop extends Process implements Module
 		$ef->name = "Features";
 		$ef-> description = "Import your features. Have you already imported the products? Otherwise this doesn't work.";
 		$ef->label = "Step 4: Import Features";
+		//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx
 		$featImported = 0;
+		$specs = $this->get_specs();
+		$products = $this->get_products();
+		$products->execute(array(':iso' => 'en'));
+		$fetchAll = $products->fetchAll(PDO::FETCH_ASSOC);
+			foreach ($fetchAll as $fetch => $product) {
+				$id_product = $product['id_product'];
+			$product_page = $this->pages->get("productid=$id_product");
+			$productid = $product_page->productid;
+				//$productid = $product['id_product'];
+				$specs->execute(array(':iso' => 'en', ':idpr' => $productid));
+				$fetch = $specs->fetchAll(PDO::FETCH_ASSOC);
+					foreach ($fetchAll as $fetch => $product) {
+					$featImported++;
+					}
+			}
+		
+		//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+/*		$featImported = 0;
 		$features = $this->get_features();
 		$features->execute(array(':iso'=>'en'));
 		$fetchAll = $features->fetchAll(PDO::FETCH_ASSOC);
 		foreach ($fetchAll as $fetch => $feature) {
 			$featImported++;
-		}
+		}*/
 		$ef->attr ('value', "$featImported features will be imported");
 		$form->add($ef);
 
@@ -373,8 +392,7 @@ class ImportPagesPrestashop extends Process implements Module
 	#########################################################
 	######## Process Features ###############################
 	#########################################################
-
-	protected function processForm41(InputfieldForm $form){
+	/*protected function processForm41(InputfieldForm $form){
 		$form->processInput($this->input->post);
 		$featImported = 0;
 		$features = $this->get_features();
@@ -383,6 +401,29 @@ class ImportPagesPrestashop extends Process implements Module
 		foreach ($fetchAll as $fetch => $product) {
 			$featImported++;
 		}
+		$this->ImportFeatures();
+		return $this->processFormMarkupFeat($featImported);
+	}*/
+	
+	protected function processForm41(InputfieldForm $form){
+		$form->processInput($this->input->post);
+		$featImported = 0;
+		$specs = $this->get_specs();
+		$products = $this->get_products();
+		$products->execute(array(':iso' => 'en'));
+		$fetchAll = $products->fetchAll(PDO::FETCH_ASSOC);
+			foreach ($fetchAll as $fetch => $product) {
+				$id_product = $product['id_product'];
+				$product_page = $this->pages->get("productid=$id_product");
+				$productid = $product_page->productid;
+				
+				//$productid = $product['id_product'];
+				$specs->execute(array(':iso' => 'en', ':idpr' => $productid));
+				$fetch = $specs->fetchAll(PDO::FETCH_ASSOC);
+					foreach ($fetchAll as $fetch => $product) {
+					$featImported++;
+					}
+			}
 		$this->ImportFeatures();
 		return $this->processFormMarkupFeat($featImported);
 	}
@@ -645,9 +686,9 @@ class ImportPagesPrestashop extends Process implements Module
 			$image_url = $picture['file_id'] . "/" . $image_name . '.jpg';
 			$image_path = "http://www.r-go-tools.com/" . $image_url;
 			try {
-				if (!$product_page->images_product->get("name={$image_name}.jpg")) {
+				//if (!$product_page->images_product->get("name={$image_name}.jpg")) {
 					$product_page->images_product->add($image_path);
-				}
+				//}
 			} catch (Exception $e) {
 			}
 			$product_page->save();
@@ -741,9 +782,9 @@ class ImportPagesPrestashop extends Process implements Module
 			WHERE c.active='1'
 			AND cl.id_shop='1'
 			AND l.iso_code= :iso
-			AND c.id_parent = '2'
+			
 			ORDER BY c.position
-			");
+			");//AND c.id_parent = '2'
 		return $categories;
 	}
 
@@ -764,7 +805,7 @@ class ImportPagesPrestashop extends Process implements Module
 		return $products;
 	}
 
-	protected function get_features(){
+	/*protected function get_features(){
 		$prestashop = $this->get_dbPrestashop();
 		$dbPrefix = $this->session->dbPrefix;
 		$features = $prestashop->prepare("
@@ -783,7 +824,7 @@ class ImportPagesPrestashop extends Process implements Module
 		ORDER BY f.position
 		");
 		return $features;
-	}
+	}*/
 
 	protected function get_specs(){
 		$prestashop = $this->get_dbPrestashop();
@@ -837,6 +878,7 @@ class ImportPagesPrestashop extends Process implements Module
         WHERE pl.id_shop='1'
         AND l.iso_code = :iso
         AND p.active='1' 
+		ORDER BY i.position
         ");
 		return $pictures;
 	}
