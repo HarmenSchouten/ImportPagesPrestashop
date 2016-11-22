@@ -380,9 +380,15 @@ class ImportPagesPrestashop extends Process implements Module
 			$template_pro->fields->add("productid");
 			$template_pro->fields->save();
 		}
-		if (!$template_pro->hasField("Specification")){
-			$template_pro->fields->add("Specification");
-			$template_pro->fields->save();
+		if ($this->session->spec_field == 1){
+		    if (!$template_pro->hasField("Specification")){
+			    $template_pro->fields->add("Specification");
+			    $template_pro->fields->save();
+		    }
+		    elseif (!$template_pro->hasField("features")){
+		       $template_pro->fields->add("features");
+                $template_pro->fields->save();
+            }
 		};
 		if (!$template_pro->hasField("images_product")){
 		    $template_pro->fields->add("images_product");
@@ -1003,30 +1009,32 @@ class ImportPagesPrestashop extends Process implements Module
 			$field->label = 'productid';
 			$field->save();
 		}
-/*		if (!$fieldspec){
-			$field = new Field();
-			$field->name = 'Specification';
-			$field->type = $this->modules->get("FieldtypeTable");
-			$field->label = 'Specification';
-			$field->maxCols = 4;
-			$field->col1name = "kenmerk";
-			$field->col1label ="feature";
-			$field->col1type = "textLanguage";
-			$field->col1sort =1;
-			$field->col2name="waarde";
-			$field->col2label="value";
-			$field->col2type="textLanguage";
-			$field->col2sort=2;
-			$field->col3name="id_feature";
-			$field->col3label="id_feature";
-			$field->col3type="int2";
-			$field->col3sort=3;
-			$field->col4name="id_feature_value";
-			$field->col4label="id_feature_value";
-			$field->col4type="int2";
-			$field->col4sort=4;
-			$field->save();
-		}*/
+		if ($this->modules->get("FieldtypeTable")) {
+            if (!$fieldspec) {
+                $field = new Field();
+                $field->name = 'Specification';
+                $field->type = $this->modules->get("FieldtypeTable");
+                $field->label = 'Specification';
+                $field->maxCols = 4;
+                $field->col1name = "kenmerk";
+                $field->col1label = "feature";
+                $field->col1type = "textLanguage";
+                $field->col1sort = 1;
+                $field->col2name = "waarde";
+                $field->col2label = "value";
+                $field->col2type = "textLanguage";
+                $field->col2sort = 2;
+                $field->col3name = "id_feature";
+                $field->col3label = "id_feature";
+                $field->col3type = "int2";
+                $field->col3sort = 3;
+                $field->col4name = "id_feature_value";
+                $field->col4label = "id_feature_value";
+                $field->col4type = "int2";
+                $field->col4sort = 4;
+                $field->save();
+            }
+        }
 		if (!$fieldfeat){
 			$field = new Field();
 			$field->name = 'features';
