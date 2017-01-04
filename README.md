@@ -1,7 +1,7 @@
 # ImportPagesPrestashop
 Module to import your categories, products, features and images from Prestashop
 
-Added options to import the EAN-numbers and the reference code for products too.
+Added options to import the EAN-numbers and the reference code for products too. If you choose to import them, they will be imported together with the products.
 
 Code update! If you wanted to import your products etc only in your default PW language, it is now available! You can choose whether to import for as much languages as possible, or for only your default language.
 
