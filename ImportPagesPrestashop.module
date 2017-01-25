@@ -268,7 +268,9 @@ class ImportPagesPrestashop extends Process implements Module
 		foreach ($fetchAll as $fetch => $link) {
 			$catImported++;
 		}
-		$ef->attr  ('value', "$catImported categories will be imported");
+		$cat = sprintf(__("%d categories will be imported"), $catImported);
+		$ef->attr  ('value', $cat);
+		//$ef->attr  ('value', "$catImported categories will be imported");
 		$form->add($ef);
 
 		$this->ImportCat($form, __('Import categories'));
@@ -289,7 +291,8 @@ class ImportPagesPrestashop extends Process implements Module
 		foreach ($fetchAll as $fetch => $product) {
 			$prodImported++;
 		}
-		$ef->attr ('value', "$prodImported products will be imported");
+		$prod = sprint(__("%d products will be imported"), $prodImported);
+		$ef->attr ('value', $prod);//"$prodImported products will be imported");
 		$form->add($ef);
 		$this->ImportProd($form, __('Import products'));
 
@@ -299,8 +302,8 @@ class ImportPagesPrestashop extends Process implements Module
 
 		$ef = $this->modules->get("InputfieldText");
 		$ef->name = "Features";
-		$ef-> description = "Import your features. Have you already imported the products? Otherwise this doesn't work.";
-		$ef->label = "Step 4: Import Features";
+		$ef-> description = __("Import your features. Have you already imported the products? Otherwise this doesn't work.");
+		$ef->label = __("Step 4: Import Features");
 		$featImported = 0;
         $langDefine = $this->session->langDefine;
 		$specs = $this->get_specs();
