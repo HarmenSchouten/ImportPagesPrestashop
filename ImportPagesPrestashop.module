@@ -146,7 +146,7 @@ class ImportPagesPrestashop extends Process implements Module
         $f =  $this->modules->get("InputfieldText");
         $f->name = 'db_host';
 		$f->label = 'DB Host';
-		$f->description = "Input DB host ";
+		$f->description = __("Input DB host ");
 		$f->required = true;
 		$f->columnWidth = 19;
         $form->add($f);
@@ -155,7 +155,7 @@ class ImportPagesPrestashop extends Process implements Module
         $f =  $this->modules->get("InputfieldText");
         $f->label = 'DB Port';
 		$f->name = 'db_port';
-		$f->description = "Input DB port ";
+		$f->description = __("Input DB port ");
         $f->columnWidth = 11;
         $form->add($f);
 
@@ -164,14 +164,14 @@ class ImportPagesPrestashop extends Process implements Module
         $f->label = 'DB prefix';
         $f->required = true;
         $f->name = 'db_prefix';
-		$f->description = "Must end with '_'";
+		$f->description = __("Must end with '_'");
         $f->columnWidth = 14;
         $form->add($f);
 
 		// Template For Categories
         $f = $this->modules->get("InputfieldSelect");
 		$f->name = 'template_cat';
-		$f->label = 'Template to use for category pages';
+		$f->label = __('Template to use for category pages');
 		$f->required = true;
 		$f->addOption('');
 		foreach($this->templates as $t) $f->addOption($t->id, $t->name);
@@ -181,7 +181,7 @@ class ImportPagesPrestashop extends Process implements Module
 		// Template For Products
 		$f = $this->modules->get("InputfieldSelect");
 		$f->name = 'template_pro';
-		$f->label = 'Template to use for product pages';
+		$f->label = __('Template to use for product pages');
 		$f->required = true;
 		$f->addOption('');
 		foreach($this->templates as $t) $f->addOption($t->id, $t->name);
@@ -193,7 +193,7 @@ class ImportPagesPrestashop extends Process implements Module
         $f->name = 'parent_id';
         $f->label = 'Parent Page';
         $f->required = true;
-        $f->description = "The pages you import will be given this parent.";
+        $f->description = __("The pages you import will be given this parent.");
         if($this->session->csvParent) $f->attr('value', $this->session->csvParent);
         $form->add($f);
 
@@ -201,10 +201,10 @@ class ImportPagesPrestashop extends Process implements Module
         if ($this->modules->get("FieldtypeTable")){
             $f = $this->modules->get("InputfieldRadios");
             $f->name = 'spec_field';
-            $f->label = "What field do you want to use for the specifications?";
+            $f->label = __("What field do you want to use for the specifications?");
             $f->required = true;
-            $f->addOption(1,'Use Pro Field Table');
-            $f->addOption(2, 'Use normal text field');
+            $f->addOption(1,__('Use Pro Field Table'));
+            $f->addOption(2, __('Use normal text field'));
             $f->attr('value', (int)$this->session->Field);
             $form->add($f);
         }
@@ -212,8 +212,8 @@ class ImportPagesPrestashop extends Process implements Module
         //Define Default Lang
         $f = $this->modules->get("InputfieldText");
         $f->name = 'lang_define';
-        $f->label = "What is the iso-code of your default language?";
-        $f->description = "For example: if English is your default language, the iso-code will be en. For Deutsch, it will be de etc.";
+        $f->label = __("What is the iso-code of your default language?");
+        $f->description = __("For example: if English is your default language, the iso-code will be en. For Deutsch, it will be de etc.");
         $f->required = true;
         $f->columnWidth = 30;
         $form->add($f);
@@ -221,24 +221,24 @@ class ImportPagesPrestashop extends Process implements Module
         //Single lang or Multi Lang
         $f = $this->modules->get("InputfieldRadios");
         $f->name = 'lang_field';
-        $f->label = "Do you want to import the categories etc. only in your default language or in as much languages as possible?";
+        $f->label = __("Do you want to import the categories etc. only in your default language or in as much languages as possible?");
         $f->required = true;
-        $f->addOption(1, "Only in my default language");
-        $f->addOption(2, "In as much languages as possible");
+        $f->addOption(1, __("Only in my default language"));
+        $f->addOption(2, __("In as much languages as possible"));
         $form->add($f);
 
         //EAN and Reference
         $f = $this->modules->get("InputfieldRadios");
         $f->name = 'eanreffield';
-        $f->label = "Do you want to import the EAN numbers and/or references too?";
+        $f->label = __("Do you want to import the EAN numbers and/or references too?");
         $f->required = true;
-        $f->addOption(1, "EAN-number and reference code for products");
-        $f->addOption(2, "Only EAN-number");
-        $f->addOption(3, "Only reference code");
-        $f->addOption(4, "None of them");
+        $f->addOption(1, __("EAN-number and reference code for products"));
+        $f->addOption(2, __("Only EAN-number"));
+        $f->addOption(3, __("Only reference code"));
+        $f->addOption(4, __("None of them"));
         $form->add($f);
 
-		$this->addSubmit($form, 'Continue to import');
+		$this->addSubmit($form, __('Continue to import'));
 
 	return $form;
 	}
@@ -250,7 +250,7 @@ class ImportPagesPrestashop extends Process implements Module
 		$form = $this->modules->get("InputfieldForm");
 		$form->method = 'post';
 		$form->action = './';
-		$form->description = "Import Categories, Products, Features or Images. Follow the steps.";
+		$form->description = __("Import Categories, Products, Features or Images. Follow the steps.");
 
 	##################################################################################
 	################################# Categories #####################################
@@ -258,8 +258,8 @@ class ImportPagesPrestashop extends Process implements Module
 
 		$ef = $this->modules->get("InputfieldText");
 		$ef->name = "Categories";
-		$ef->description = "Import your categories.";
-		$ef->label = "Step 2: Import Categories";
+		$ef->description = __("Import your categories.");
+		$ef->label = __("Step 2: Import Categories");
 		$catImported = 0;
         $langDefine = $this->session->langDefine;
 		$categories = $this->get_category();
@@ -271,7 +271,7 @@ class ImportPagesPrestashop extends Process implements Module
 		$ef->attr  ('value', "$catImported categories will be imported");
 		$form->add($ef);
 
-		$this->ImportCat($form, 'Import categories');
+		$this->ImportCat($form, __('Import categories'));
 
 	##################################################################################
 	################################# Products #######################################
@@ -279,8 +279,8 @@ class ImportPagesPrestashop extends Process implements Module
 
 		$ef = $this->modules->get("InputfieldText");
 		$ef->name = "Products";
-		$ef-> description = "Import your products. Have you already imported the categories? Otherwise this doesn't work.";
-		$ef->label = "Step 3: Import Products";
+		$ef-> description = __("Import your products. Have you already imported the categories? Otherwise this doesn't work.");
+		$ef->label = __("Step 3: Import Products");
 		$prodImported = 0;
         $langDefine = $this->session->langDefine;
 		$products = $this->get_products();
@@ -291,7 +291,7 @@ class ImportPagesPrestashop extends Process implements Module
 		}
 		$ef->attr ('value', "$prodImported products will be imported");
 		$form->add($ef);
-		$this->ImportProd($form, 'Import products');
+		$this->ImportProd($form, __('Import products'));
 
 	##################################################################################
 	################################# Features #######################################
