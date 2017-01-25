@@ -291,7 +291,7 @@ class ImportPagesPrestashop extends Process implements Module
 		foreach ($fetchAll as $fetch => $product) {
 			$prodImported++;
 		}
-		$prod = sprint(__("%d products will be imported"), $prodImported);
+		$prod = sprintf(__("%d products will be imported"), $prodImported);
 		$ef->attr ('value', $prod);//"$prodImported products will be imported");
 		$form->add($ef);
 		$this->ImportProd($form, __('Import products'));
@@ -320,10 +320,11 @@ class ImportPagesPrestashop extends Process implements Module
                 $featImported++;
             }
         }
-		$ef->attr ('value', "$featImported features will be imported");
+        $feat = sprintf(__("%d features will be imported"), $featImported);
+		$ef->attr ('value', $feat);//"$featImported features will be imported");
 		$form->add($ef);
 
-		$this->ImportFeat($form, 'Import Features');
+		$this->ImportFeat($form, __('Import Features'));
 
 	#################################################################
 	########################### Images ##############################
@@ -331,8 +332,8 @@ class ImportPagesPrestashop extends Process implements Module
 
 		$ef = $this->modules->get("InputfieldText");
 		$ef->name = "Images";
-		$ef-> description = "Import your images. Have you already imported the products? Otherwise this doesn't work.";
-		$ef->label = "Step 5: Import Images";
+		$ef-> description = __("Import your images. Have you already imported the products? Otherwise this doesn't work.");
+		$ef->label = __("Step 5: Import Images");
 		$imgImported = 0;
         $langDefine = $this->session->langDefine;
 		$images = $this->get_images();
@@ -341,9 +342,10 @@ class ImportPagesPrestashop extends Process implements Module
 		foreach ($fetchAll as $fetch => $product) {
 			$imgImported++;
 		}
-		$ef->attr ('value', "$imgImported images will be imported");
+		$img = sprintf(__("%d images will be imported"), $imgImported);
+		$ef->attr ('value', $img);//"$imgImported images will be imported");
 		$form->add($ef);
-		$this->ImportImg($form, 'Import Images');
+		$this->ImportImg($form, __('Import Images'));
 
         return $form;
         }
