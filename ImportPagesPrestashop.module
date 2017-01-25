@@ -113,14 +113,14 @@ class ImportPagesPrestashop extends Process implements Module
 	protected function buildForm1() {
 		$form = $this->modules->get("InputfieldForm");
 		$form->method = 'post';
-		$form->description = "Step 1: Check database. Follow the steps.";
+		$form->description = __("Step 1: Check database. Follow the steps.");
 
         //DB Name
 		$f = $this->modules->get("InputfieldText");
         $f->label = 'DB Name';
 		$f->required = true;
         $f->name = 'db_name';
-		$f->description = "Input DB name";
+		$f->description = __("Input DB name");
         $f->columnWidth = 19;
         $form->add($f);
 
@@ -128,7 +128,7 @@ class ImportPagesPrestashop extends Process implements Module
         $f =  $this->modules->get("InputfieldText");
         $f->label = 'DB User';
         $f->name = 'db_user';
-		$f->description = "Input DB user";
+		$f->description = __("Input DB user");
 		$f->required = true;
         $f->columnWidth = 18;
         $form->add($f);
@@ -137,7 +137,7 @@ class ImportPagesPrestashop extends Process implements Module
         $f =  $this->modules->get("InputfieldText");
         $f->label = 'DB Pass';
         $f->name = 'db_pass';
-		$f->description = "Input DB password";
+		$f->description = __("Input DB password");
 		$f->required = true;
         $f->columnWidth = 18;
         $form->add($f);
