@@ -15,7 +15,7 @@ class ImportPagesPrestashop extends Process implements Module
 	{
 		return array(
 			'title' => 'Import Products from Prestashop',
-			'version' => 111,
+			'version' => 112,
 			'summary' => 'Import your categories, products, features and images directly from your Prestashop database to your Processwire website.',
             'singular' => true,
 			'autoload' => false,
