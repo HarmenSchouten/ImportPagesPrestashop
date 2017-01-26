@@ -17,8 +17,11 @@ class ImportPagesPrestashop extends Process implements Module
 			'title' => 'Import Products from Prestashop',
 			'version' => 112,
 			'summary' => 'Import your categories, products, features and images directly from your Prestashop database to your Processwire website.',
+            'author' => 'Harmen Schouten, djuhari',
+            'href' => 'http://modules.processwire.com/modules/import-pages-prestashop/',
             'singular' => true,
 			'autoload' => false,
+            'icon' => 'download',
 		);
 	}
 
