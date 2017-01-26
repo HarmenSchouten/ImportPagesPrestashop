@@ -68,41 +68,63 @@ class ImportPagesPrestashop extends Process implements Module
 		$this->template_pro = $this->templates->get($this->session->proTemplate);
 		$this->parent = $this->pages->get($this->session->csvParent);
 		if (!$this->template_cat || !$this->parent->id || !$this->template_pro) {
-			$this->error("Missing required fields");
+			$this->error(__("Missing required fields"));
 			$this->session->redirect("../");
 		}
 		//When button is clicked to import the categories...
+        $parent = $this->parent;
+        $templatecat = $this->template_cat;
 		$form = $this->buildForm2();
-		if ($this->input->post->importcat) {
-			$this->session->done = 1;
-			return $this->processForm21($form);
-		}
+		if (!$parent->hasChildren()) {
+            if ($this->input->post->importcat) {
+                $this->session->done = 1;
+                return $this->processForm21($form);
+            }
 
-		//When button is clicked to import the products...
-		if ($this->input->post->importprod) {
-			if ($this->session->done >= 1) {
-				$this->session->done = 2;
-				return $this->processForm31($form);
+            //When button is clicked to import the products...
+            if ($this->input->post->importprod) {
+                if ($this->session->done >= 1) {
+                    $this->session->done = 2;
+                    return $this->processForm31($form);
 
-			}
-			else $this->message("First import the categories");
-		}
+                } else $this->message(__("First import the categories"));
+            }
 
-		//When button is clicked to import the features...
-		if($this->input->post->importfeat) {
-			if ($this->session->done >= 2) {
-				return $this->processForm41($form);
-			}
-			else $this->message("First import the products.");
-		}
+            //When button is clicked to import the features...
+            if ($this->input->post->importfeat) {
+                if ($this->session->done >= 2) {
+                    return $this->processForm41($form);
+                } else $this->message(__("First import the products."));
+            }
 
-		//When button is clicked to import the images...
-		if($this->input->post->importimg) {
-			if ($this->session->done >= 2) {
-				return $this->processForm51($form);
-			}
-			else $this->message("First import the products.");
-		}
+            //When button is clicked to import the images...
+            if ($this->input->post->importimg) {
+                if ($this->session->done >= 2) {
+                    return $this->processForm51($form);
+                } else $this->message(__("First import the products."));
+            }
+        }
+
+        if ($parent->hasChildren("template=$templatecat")) {
+            if ($this->input->post->importcat) {
+                return $this->processForm21($form);
+            }
+            //When button is clicked to import the products...
+            if ($this->input->post->importprod) {
+                return $this->processForm31($form);
+            }
+            //When button is clicked to import the features...
+            if ($this->input->post->importfeat) {
+                return $this->processForm41($form);
+            }
+            //When button is clicked to import the images...
+            if ($this->input->post->importimg) {
+                return $this->processForm51($form);
+            }
+        }
+        else{
+            $this->message(__("First import your categories!"));
+        }
 
 		return $form->render();
 	}
@@ -117,7 +139,7 @@ class ImportPagesPrestashop extends Process implements Module
 
         //DB Name
 		$f = $this->modules->get("InputfieldText");
-        $f->label = 'DB Name';
+        $f->label = __('DB Name');
 		$f->required = true;
         $f->name = 'db_name';
 		$f->description = __("Input DB name");
@@ -126,7 +148,7 @@ class ImportPagesPrestashop extends Process implements Module
 
         // DB User
         $f =  $this->modules->get("InputfieldText");
-        $f->label = 'DB User';
+        $f->label = __('DB User');
         $f->name = 'db_user';
 		$f->description = __("Input DB user");
 		$f->required = true;
@@ -135,7 +157,7 @@ class ImportPagesPrestashop extends Process implements Module
 
         // DB Pass
         $f =  $this->modules->get("InputfieldText");
-        $f->label = 'DB Pass';
+        $f->label = __('DB Pass');
         $f->name = 'db_pass';
 		$f->description = __("Input DB password");
 		$f->required = true;
@@ -145,7 +167,7 @@ class ImportPagesPrestashop extends Process implements Module
         // DB Host
         $f =  $this->modules->get("InputfieldText");
         $f->name = 'db_host';
-		$f->label = 'DB Host';
+		$f->label = __('DB Host');
 		$f->description = __("Input DB host ");
 		$f->required = true;
 		$f->columnWidth = 19;
@@ -153,7 +175,7 @@ class ImportPagesPrestashop extends Process implements Module
 
         // DB Port
         $f =  $this->modules->get("InputfieldText");
-        $f->label = 'DB Port';
+        $f->label = __('DB Port');
 		$f->name = 'db_port';
 		$f->description = __("Input DB port ");
         $f->columnWidth = 11;
@@ -161,7 +183,7 @@ class ImportPagesPrestashop extends Process implements Module
 
         // DB Prefix
         $f = $this->modules->get("InputfieldText");
-        $f->label = 'DB prefix';
+        $f->label = __('DB prefix');
         $f->required = true;
         $f->name = 'db_prefix';
 		$f->description = __("Must end with '_'");
@@ -191,7 +213,7 @@ class ImportPagesPrestashop extends Process implements Module
         // Parent For Imported Pages
         $f = $this->modules->get("InputfieldPageListSelect");
         $f->name = 'parent_id';
-        $f->label = 'Parent Page';
+        $f->label = __('Parent Page');
         $f->required = true;
         $f->description = __("The pages you import will be given this parent.");
         if($this->session->csvParent) $f->attr('value', $this->session->csvParent);
@@ -483,7 +505,7 @@ class ImportPagesPrestashop extends Process implements Module
 		foreach ($fetchAll as $fetch => $product) {
 			$imgImported++;
 		}
-		$this->ImportImages();
+        $this->ImportImages();
 		return $this->processFormMarkupImg($imgImported);
 	}
 
@@ -492,27 +514,39 @@ class ImportPagesPrestashop extends Process implements Module
 	####################################################################################################################
 
 	protected function processFormMarkupCat($catImported) {
-		return 	"<h2>Imported $catImported categories</h2>" .
-			"<p><a href='{$this->config->urls->admin}page/list/?open={$this->parent->id}'>See the imported pages</a></p>" .
-			"<p><a href='../import/'>Import more</a></p>";
+	    $pages = sprintf(__("See the imported pages"));
+        $more = sprintf(__("Import more"));
+        $amount = sprintf(__("Imported %d categories"), $catImported);
+		return 	"<h2>".$amount."</h2>" .
+			"<p><a href='{$this->config->urls->admin}page/list/?open={$this->parent->id}'>$pages</a></p>" .
+			"<p><a href='../import/'>$more</a></p>";
 	}
 
 	protected function processFormMarkupProd($prodImported) {
-		return 	"<h2>Imported $prodImported products</h2>" .
-			"<p><a href='{$this->config->urls->admin}page/list/?open={$this->parent->id}'>See the imported pages</a></p>" .
-			"<p><a href='../import/'>Import more </a></p>";
+        $pages = sprintf(__("See the imported pages"));
+        $more = sprintf(__("Import more"));
+        $amount = sprintf(__("Imported %d products"), $prodImported);
+		return 	"<h2>".$amount."</h2>" .
+			"<p><a href='{$this->config->urls->admin}page/list/?open={$this->parent->id}'>$pages</a></p>" .
+			"<p><a href='../import/'>$more</a></p>";
 	}
 
 	protected function processFormMarkupFeat($featImported) {
-		return 	"<h2>Imported $featImported features</h2>" .
-			"<p><a href='{$this->config->urls->admin}page/list/?open={$this->parent->id}'>See the imported pages</a></p>" .
-			"<p><a href='../import/'>Import more</a></p>";
+        $pages = sprintf(__("See the imported pages"));
+        $more = sprintf(__("Import more"));
+        $amount = sprintf(__("Imported %d features"), $featImported);
+		return 	"<h2>".$amount."</h2>" .
+			"<p><a href='{$this->config->urls->admin}page/list/?open={$this->parent->id}'>$pages</a></p>" .
+			"<p><a href='../import/'>$more</a></p>";
 	}
 
 	protected function processFormMarkupImg($imgImported) {
-		return 	"<h2>Imported $imgImported images</h2>" .
-			"<p><a href='{$this->config->urls->admin}page/list/?open={$this->parent->id}'>See the imported pages</a></p>" .
-			"<p>Congratulations, you've imported everything!</p>";
+        $pages = sprintf(__("See the imported pages"));
+        $more = sprintf(__("Import more"));
+        $amount = sprintf(__("Imported %d images"), $imgImported);
+		return 	"<h2>".$amount."</h2>" .
+			"<p><a href='{$this->config->urls->admin}page/list/?open={$this->parent->id}'>$pages</a></p>" .
+        "<p><a href='../import/'>$more</a></p>";
 	}
 
 	###########################################################################################################################################
@@ -955,19 +989,21 @@ class ImportPagesPrestashop extends Process implements Module
 
 		foreach ($pictures as $picture) {
 			$id_product = $picture['id_product'];
-			$product_page = $this->pages->get("productid=$id_product");
+			$product_pages = wire("pages")->get("productid=$id_product");
+            if(!$product_pages) continue;
 			// ensure output formatting is off
-			$product_page->of(false);
+			$product_pages->of(false);
 			$str_prlink = $picture['product_name']; 
 			//make sure end of string ends with alphanumeric
 			$image_name = preg_replace('/[^a-z0-9]+\Z/i', '', $str_prlink);
 			$image_url = $picture['file_id'] . "/" . $image_name . '.jpg';
 			$image_path = "http://www.r-go-tools.com/" . $image_url;
 			try {
-					$product_page->images_product->add($image_path);
+            $imgfield = $product_pages->images_product;
+            $imgfield->add($image_path);
 			} catch (Exception $e) {
 			}
-			$product_page->save();
+			$product_pages->save();
 		}
 	}
 
@@ -993,10 +1029,10 @@ class ImportPagesPrestashop extends Process implements Module
 			);
 			$psdatabase = new WireDatabasePDO($dsn, $username, $password, $driver_options);	//Make connection with the DB
 			$psdatabase->setDebugMode(wire('config')->debug);
-			$this->message('Settings are correct, connected with external database');
+			$this->message(__('Settings are correct, connected with external database'));
 			}
         catch(Exception $e) {
-            $this->message('Check if you have the right module for this. Otherwise try the second option or install the module.');
+            $this->message(__('Check if you have the right module for this. Otherwise try the second option or install the module.'));
             return false;
         }
  		return $psdatabase;
@@ -1104,7 +1140,6 @@ class ImportPagesPrestashop extends Process implements Module
     ############### Functions to make fields #################
     ##########################################################
     protected function makeFields(){
-
         $spec_field = $this->session->Field;
         if (!$this->fields->get("id_category")){
             $field = new Field();
@@ -1148,7 +1183,7 @@ class ImportPagesPrestashop extends Process implements Module
             }
             else {
                 $this->session->redirect("../");
-                $this->message("You don't have the module to import the specifications in a ProField:Table. Buy/install this module or choose for the second option");
+                $this->message(__("You don't have the module to import the specifications in a ProField:Table. Buy/install this module or choose for the second option"));
             }
         }
         if ($spec_field == 2) {
@@ -1229,7 +1264,7 @@ class ImportPagesPrestashop extends Process implements Module
             }
             else {
                 $this->session->redirect("../");
-                $this->message("You don't have the module to import the specifications in a ProField:Table. Buy/install this module or choose for the second option");
+                $this->message(__("You don't have the module to import the specifications in a ProField:Table. Buy/install this module or choose for the second option"));
             }
         }
         if ($spec_field == 2) {
@@ -1293,6 +1328,11 @@ class ImportPagesPrestashop extends Process implements Module
         $template_cat = $templates->get($this->session->catTemplate);
         $template_pro = $templates->get($this->session->proTemplate);
         $spec_field = $this->session->Field;
+
+        if(!$template_cat->hasField("testing")){
+            $template_cat->fields->add("testing");
+            $template_cat->fields->save();
+        }
         if(!$template_cat->hasField("id_category")){
             $template_cat->fields->add("id_category");
             $template_cat->fields->save();
