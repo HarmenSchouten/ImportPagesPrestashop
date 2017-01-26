@@ -292,7 +292,6 @@ class ImportPagesPrestashop extends Process implements Module
 		}
 		$cat = sprintf(__("%d categories will be imported"), $catImported);
 		$ef->attr  ('value', $cat);
-		//$ef->attr  ('value', "$catImported categories will be imported");
 		$form->add($ef);
 
 		$this->ImportCat($form, __('Import categories'));
@@ -314,7 +313,7 @@ class ImportPagesPrestashop extends Process implements Module
 			$prodImported++;
 		}
 		$prod = sprintf(__("%d products will be imported"), $prodImported);
-		$ef->attr ('value', $prod);//"$prodImported products will be imported");
+		$ef->attr ('value', $prod);
 		$form->add($ef);
 		$this->ImportProd($form, __('Import products'));
 
@@ -343,7 +342,7 @@ class ImportPagesPrestashop extends Process implements Module
             }
         }
         $feat = sprintf(__("%d features will be imported"), $featImported);
-		$ef->attr ('value', $feat);//"$featImported features will be imported");
+		$ef->attr ('value', $feat);
 		$form->add($ef);
 
 		$this->ImportFeat($form, __('Import Features'));
@@ -365,7 +364,7 @@ class ImportPagesPrestashop extends Process implements Module
 			$imgImported++;
 		}
 		$img = sprintf(__("%d images will be imported"), $imgImported);
-		$ef->attr ('value', $img);//"$imgImported images will be imported");
+		$ef->attr ('value', $img);
 		$form->add($ef);
 		$this->ImportImg($form, __('Import Images'));
 
