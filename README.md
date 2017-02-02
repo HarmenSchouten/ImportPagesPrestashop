@@ -30,7 +30,7 @@ folllowed by the categories and so on. But if you want to update all the data, I
 - Choose to import the EAN-numbers of the products and/or the reference code of the products too
 
 <h4>Translations</h4>
-I've added the options to translate this module. In the .zip file there is a Dutch translation included. 
+I've added the options to translate this module. In the .zip file is a Dutch translation included. 
 If you want to translate this module in other languages, feel free to PM me on the forum.
 
 <h5>Support Forum</h5>
