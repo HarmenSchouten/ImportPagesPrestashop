@@ -106,23 +106,33 @@ class ImportPagesPrestashop extends Process implements Module
                     return $this->processForm51($form);
                 } else $this->message(__("First import the products."));
             }
+            if ($this->input->post->changeimport){
+                $this->session->redirect('../change/');
+            }
         }
 
         if ($parent->hasChildren("template=$templatecat")) {
             if ($this->input->post->importcat) {
+                $this->session->done =1;
                 return $this->processForm21($form);
             }
             //When button is clicked to import the products...
             if ($this->input->post->importprod) {
+                $this->session->done =1;
                 return $this->processForm31($form);
             }
             //When button is clicked to import the features...
             if ($this->input->post->importfeat) {
+                $this->session->done =1;
                 return $this->processForm41($form);
             }
             //When button is clicked to import the images...
             if ($this->input->post->importimg) {
+                $this->session->done =1;
                 return $this->processForm51($form);
+            }
+            if ($this->input->post->changeimport){
+                $this->session->redirect('../change/');
             }
         }
         else{
@@ -131,6 +141,17 @@ class ImportPagesPrestashop extends Process implements Module
 
 		return $form->render();
 	}
+
+	###############################################################
+    ##################### Execute change ##########################
+    ###############################################################
+    public function ___executeChange(){
+        $form = $this->BuildForm3();
+        if ($this->input->post->deletepages){
+            return $this->processForm61($form);
+        }
+        return $form->render();
+    }
 
 #############################################################
 ####################### Build Form 1 ########################
@@ -371,8 +392,25 @@ class ImportPagesPrestashop extends Process implements Module
 		$form->add($ef);
 		$this->ImportImg($form, __('Import Images'));
 
+        if ($this->session->done >= 1) {
+            $this->changeImport($form, __('Change your import by deleting unnecessary pages'));
+        }
+
         return $form;
         }
+
+    ###############################################################################
+    ############################# Build Form 3 ####################################
+    ###############################################################################
+    protected function BuildForm3(){
+        $form = $this->modules->get("InputfieldForm");
+        $form->method = 'post';
+        $form->description = __("Click the pages you want to delete");
+
+
+        $this->deletePages($form, __("Delete selected pages"));
+        return $form;
+    }
 
 	###############################################################################
 	################### Functions for processing the forms ########################
@@ -511,6 +549,21 @@ class ImportPagesPrestashop extends Process implements Module
 		return $this->processFormMarkupImg($imgImported);
 	}
 
+	############################################################
+    ################### Process delete #########################
+    ############################################################
+    protected function processForm61(InputfieldForm $form){
+        $pages = wire('pages');
+        $form->processInput($this->input->post);
+        $this->session->delete = (int)$form->get("deletepages")->value;
+        $delete = $this->session->delete;
+        foreach ($delete as $deletepage){
+            $this->pages->trash($deletepage);
+        }
+        $deletedpages = count($delete);
+        return $this->processFormMarkupDel($deletedpages);
+    }
+
 	####################################################################################################################
 	############### Process Form Markup to show for each imported type how many items are imported #####################
 	####################################################################################################################
@@ -550,6 +603,13 @@ class ImportPagesPrestashop extends Process implements Module
 			"<p><a href='{$this->config->urls->admin}page/list/?open={$this->parent->id}'>$pages</a></p>" .
         "<p><a href='../import/'>$more</a></p>";
 	}
+
+	protected function processFormMarkupDel($deletedpages) {
+        $pages = sprintf(__("Go to page tree"));
+        $amount = sprintf(_n("Deleted %d page", "Deleted %d pages.", $deletedpages),$deletedpages);
+	    return "<h2>.$amount.</h2>".
+        "<p><a href='{$this->config->urls->admin}page/list/?open={$this->parent->id}'>$pages</a></p>";
+    }
 
 	###########################################################################################################################################
 	############################# Functions to import the categories, products, features and images ###########################################
@@ -616,9 +676,9 @@ class ImportPagesPrestashop extends Process implements Module
 		}
 	}
 
-##################################################################
-################## Import Categories, Single Lang ################
-##################################################################
+    ##################################################
+    ########### Categories, Single Lang ##############
+    ##################################################
     protected function ImportCategoriesSingleLang(){
         $langDefine = $this->session->langDefine;
         $languages = wire("languages");
@@ -1404,6 +1464,20 @@ class ImportPagesPrestashop extends Process implements Module
     protected function ImportImg(InputfieldForm $form, $value = 'Submit'){
         $f = $this->modules->get("InputfieldSubmit");
         $f->name = 'importimg';
+        $f->value = $value;
+        $form->add($f);
+    }
+
+    protected function changeImport(InputfieldForm $form, $value = 'Submit'){
+        $f = $this->modules->get("InputfieldSubmit");
+        $f->name = 'changeimport';
+        $f->value = $value;
+        $form->add($f);
+    }
+
+    protected function deletePages(InputfieldForm $form, $value = 'Submit'){
+        $f = $this->modules->get("InputfieldSubmit");
+        $f->name = 'pagedelete';
         $f->value = $value;
         $form->add($f);
     }
