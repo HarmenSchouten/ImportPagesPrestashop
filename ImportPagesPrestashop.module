@@ -142,16 +142,7 @@ class ImportPagesPrestashop extends Process implements Module
 		return $form->render();
 	}
 
-	###############################################################
-    ##################### Execute change ##########################
-    ###############################################################
-    public function ___executeChange(){
-        $form = $this->BuildForm3();
-        if ($this->input->post->deletepages){
-            return $this->processForm61($form);
-        }
-        return $form->render();
-    }
+
 
 #############################################################
 ####################### Build Form 1 ########################
@@ -244,16 +235,14 @@ class ImportPagesPrestashop extends Process implements Module
         $form->add($f);
 
         // Field to use for Specifications
-        if ($this->modules->get("FieldtypeTable")){
-            $f = $this->modules->get("InputfieldRadios");
-            $f->name = 'spec_field';
-            $f->label = __("What field do you want to use for the specifications?");
-            $f->required = true;
-            $f->addOption(1,__('Use Pro Field Table'));
-            $f->addOption(2, __('Use normal text field'));
-            $f->attr('value', (int)$this->session->Field);
-            $form->add($f);
-        }
+        $f = $this->modules->get("InputfieldRadios");
+        $f->name = 'spec_field';
+        $f->label = __("What field do you want to use for the specifications?");
+        $f->required = true;
+        $f->addOption(1,__('Use Pro Field Table'));
+        $f->addOption(2, __('Use normal text field'));
+        $f->attr('value', (int)$this->session->Field);
+        $form->add($f);
 
         //Define Default Lang
         $f = $this->modules->get("InputfieldText");
@@ -399,18 +388,6 @@ class ImportPagesPrestashop extends Process implements Module
         return $form;
         }
 
-    ###############################################################################
-    ############################# Build Form 3 ####################################
-    ###############################################################################
-    protected function BuildForm3(){
-        $form = $this->modules->get("InputfieldForm");
-        $form->method = 'post';
-        $form->description = __("Click the pages you want to delete");
-
-
-        $this->deletePages($form, __("Delete selected pages"));
-        return $form;
-    }
 
 	###############################################################################
 	################### Functions for processing the forms ########################
@@ -549,21 +526,6 @@ class ImportPagesPrestashop extends Process implements Module
 		return $this->processFormMarkupImg($imgImported);
 	}
 
-	############################################################
-    ################### Process delete #########################
-    ############################################################
-    protected function processForm61(InputfieldForm $form){
-        $pages = wire('pages');
-        $form->processInput($this->input->post);
-        $this->session->delete = (int)$form->get("deletepages")->value;
-        $delete = $this->session->delete;
-        foreach ($delete as $deletepage){
-            $this->pages->trash($deletepage);
-        }
-        $deletedpages = count($delete);
-        return $this->processFormMarkupDel($deletedpages);
-    }
-
 	####################################################################################################################
 	############### Process Form Markup to show for each imported type how many items are imported #####################
 	####################################################################################################################
@@ -604,12 +566,6 @@ class ImportPagesPrestashop extends Process implements Module
         "<p><a href='../import/'>$more</a></p>";
 	}
 
-	protected function processFormMarkupDel($deletedpages) {
-        $pages = sprintf(__("Go to page tree"));
-        $amount = sprintf(_n("Deleted %d page", "Deleted %d pages.", $deletedpages),$deletedpages);
-	    return "<h2>.$amount.</h2>".
-        "<p><a href='{$this->config->urls->admin}page/list/?open={$this->parent->id}'>$pages</a></p>";
-    }
 
 	###########################################################################################################################################
 	############################# Functions to import the categories, products, features and images ###########################################
@@ -1094,7 +1050,7 @@ class ImportPagesPrestashop extends Process implements Module
 			$this->message(__('Settings are correct, connected with external database'));
 			}
         catch(Exception $e) {
-            $this->message(__('Check if you have the right module for this. Otherwise try the second option or install the module.'));
+		    $this->message("Cannot make connection with external database");
             return false;
         }
  		return $psdatabase;
@@ -1208,6 +1164,14 @@ class ImportPagesPrestashop extends Process implements Module
             $field->name = 'id_category';
             $field->type = 'Integer';
             $field->label = 'id_category';
+            $field->save();
+        }
+
+        if (!$this->fields->get("body")){
+            $field = new Field();
+            $field->name = 'Body';
+            $field->type = 'TextAreaLanguage';
+            $field->label = 'Body';
             $field->save();
         }
 
@@ -1391,16 +1355,20 @@ class ImportPagesPrestashop extends Process implements Module
         $template_pro = $templates->get($this->session->proTemplate);
         $spec_field = $this->session->Field;
 
-        if(!$template_cat->hasField("testing")){
-            $template_cat->fields->add("testing");
-            $template_cat->fields->save();
-        }
         if(!$template_cat->hasField("id_category")){
             $template_cat->fields->add("id_category");
             $template_cat->fields->save();
         }
+        if(!$template_cat->hasField("body")){
+            $template_cat->fields->add("body");
+            $template_cat->fields->save();
+        }
         if (!$template_pro->hasField("productid")){
             $template_pro->fields->add("productid");
+            $template_pro->fields->save();
+        }
+        if(!$template_pro->hasField("body")){
+            $template_pro->fields->add("body");
             $template_pro->fields->save();
         }
         if ($spec_field == 1){
